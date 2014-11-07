@@ -14,14 +14,23 @@
 #include <iterator>
 #include <vector>
 
+#include <math.h>  
+
 using namespace std; 
+
 
 class Document
 {
     public:
         string value;
-        double tf;
+};
+
+class DocNode
+{
+    public:
         Document* doc;
+        DocNode* next;
+        int tf;
 
 };
 
@@ -30,7 +39,8 @@ class Term
     public:
         string name;
         double idf;
-        Document* doc;
+        DocNode* docNode;
+        int nt;
 
 };
 
@@ -40,24 +50,24 @@ int main(int argc, char **argv)
 
     int readed_docs_len = (sizeof(readed_docs)/sizeof(*readed_docs));
 
-    map<string, Term> vector_space;
-    vector<Document> docs;
+    map<string, Term*> vector_space;
+    vector<Document*> docs;
 
     //Read the documents and put thery in memory
     for (int i=0; i<readed_docs_len; i++) 
     {
-        Document doc;
-        doc.value = readed_docs[i];
+        Document* doc = new Document();
+        doc->value = readed_docs[i];
         docs.push_back(doc);
     }
 
     //iteration in docs
-    for(vector<Document>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) { 
+    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) { 
 
-        map<string, int> map_doc_vocab;
+        map<string, DocNode*> map_doc_vocab;
 
         //Split current document in an vector of strings
-        istringstream iss(it_doc->value);
+        istringstream iss((*it_doc)->value);
 
         vector<string> doc_vocab; 
         
@@ -67,42 +77,58 @@ int main(int argc, char **argv)
 
         for(vector<string>::iterator it = doc_vocab.begin(); it != doc_vocab.end(); ++it) {
             
-            //Compute the amount of each term fot the current document
+            //Compute the amount of each term for the current document
             if (map_doc_vocab.find(*it) == map_doc_vocab.end())
             {
-                map_doc_vocab[*it] = 1;
+                DocNode* docNode = new DocNode();
+                docNode->doc = *it_doc;
+                docNode->tf = 1;
+
+                map_doc_vocab[*it] = docNode;
 
                 //If the keyword doesn't exist, create a new term
                 if (vector_space.find(*it) == vector_space.end())
                 {
-                    Term term;
-                    term.name = *it;
-                    term.doc = &(*it_doc);
+
+                    Term* term = new Term();
+                    term->name = *it;
+                    term->nt = 1;
+                    term->docNode = docNode;
 
                     vector_space[*it] = term;
                 }
                 else 
                 {
-                    map<string, Term>::iterator it_term = vector_space.find(*it);
+                    Term* tmpTerm = vector_space[*it];
+                    tmpTerm->nt++;
 
-                    it_doc->doc = it_term->second.doc;
+                    docNode->next = tmpTerm->docNode;
 
-                    it_term->second.doc = &(*it_doc);
+                    tmpTerm->docNode = docNode;
                 }
             }
             else 
             {
-                map_doc_vocab[*it]++;
+                map_doc_vocab[*it]->tf++;
             }
         }
     }
 
-    map<string, Term>::iterator i = vector_space.find("A");
-    assert(i != vector_space.end());
-    cout << "Key: " << i->first << '\n';
-    cout << " Value: " << i->second.doc->value << '\n';
-    cout << " Value: " << i->second.doc->doc->value << '\n';
-    cout << " Value: " << i->second.doc->doc->doc->value << '\n';
+    Term* tmpTerm = vector_space["A"];
+    cout << " Doc: " << tmpTerm->docNode->next->next->doc->value << '\n';
+    cout << " TF: " << tmpTerm->docNode->next->next->tf << '\n';
+    cout << " NT: " << tmpTerm->nt << '\n';
+
+    //precisa pegar apenas duas casas da divisão para a conta dá certa com o slide
+    cout << " TFxIDF - "<< log((double)readed_docs_len/tmpTerm->nt) * tmpTerm->docNode->next->next->tf << '\n';
+
+
+    // cout << " Doc: " << tmpTerm->docNode->next->doc->value << '\n';
+    // cout << " TF: " << tmpTerm->docNode->next->tf << '\n';
+
+    // cout << " Doc: " << tmpTerm->docNode->next->next->doc->value << '\n';
+    // cout << " TF: " << tmpTerm->docNode->next->next->tf << '\n';
+    
     
     // i = m.find("B");
     // assert(i != m.end());
