@@ -1,9 +1,3 @@
-//TODO
-// Verificar se o vetor armazena so os ponteiros
-// Se um termo for repetido para um documento, nao adicionar no vetor
-// Verificar qual a melhor estrategia: vetor vs lista encadeada
-// TF e IDF
-
 #include <map>
 #include <iostream>
 #include <cassert>
@@ -53,7 +47,7 @@ int main(int argc, char **argv)
     map<string, Term*> vector_space;
     vector<Document*> docs;
 
-    //Read the documents and put thery in memory
+    //Read all documents and put they in memory
     for (int i=0; i<readed_docs_len; i++) 
     {
         Document* doc = new Document();
@@ -61,7 +55,7 @@ int main(int argc, char **argv)
         docs.push_back(doc);
     }
 
-    //iteration in docs
+    //Iterate in docs
     for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) { 
 
         map<string, DocNode*> map_doc_vocab;
@@ -77,7 +71,7 @@ int main(int argc, char **argv)
 
         for(vector<string>::iterator it = doc_vocab.begin(); it != doc_vocab.end(); ++it) {
             
-            //Compute the amount of each term for the current document
+            
             if (map_doc_vocab.find(*it) == map_doc_vocab.end())
             {
                 DocNode* docNode = new DocNode();
@@ -92,6 +86,7 @@ int main(int argc, char **argv)
 
                     Term* term = new Term();
                     term->name = *it;
+                    //Accumulate the amount of documents where the term appears
                     term->nt = 1;
                     term->docNode = docNode;
 
@@ -109,34 +104,32 @@ int main(int argc, char **argv)
             }
             else 
             {
+                //Accumulate the amount of each term for the current document = TF
                 map_doc_vocab[*it]->tf++;
             }
         }
     }
 
-    Term* tmpTerm = vector_space["A"];
-    cout << " Doc: " << tmpTerm->docNode->next->next->doc->value << '\n';
-    cout << " TF: " << tmpTerm->docNode->next->next->tf << '\n';
-    cout << " NT: " << tmpTerm->nt << '\n';
+    //Search a term
+    Term* tmpTerm = vector_space["C"];
 
-    //precisa pegar apenas duas casas da divisão para a conta dá certa com o slide
-    cout << " TFxIDF - "<< log((double)readed_docs_len/tmpTerm->nt) * tmpTerm->docNode->next->next->tf << '\n';
+    DocNode* cDocNode = tmpTerm->docNode;
 
+    while (true) {
 
-    // cout << " Doc: " << tmpTerm->docNode->next->doc->value << '\n';
-    // cout << " TF: " << tmpTerm->docNode->next->tf << '\n';
+        cout << " Doc: " << cDocNode->doc->value << '\n';
+        cout << " TF: "  << cDocNode->tf << '\n';
+        cout << " NT: "  << tmpTerm->nt << '\n';
 
-    // cout << " Doc: " << tmpTerm->docNode->next->next->doc->value << '\n';
-    // cout << " TF: " << tmpTerm->docNode->next->next->tf << '\n';
-    
-    
-    // i = m.find("B");
-    // assert(i != m.end());
-    // cout << "Key: " << i->first << " Value: " << &i->second.name1 << '\n';
+        cout << " TFxIDF - "<< log((double)readed_docs_len/tmpTerm->nt) * cDocNode->tf << '\n';
 
-    // i = m.find("C");
-    // assert(i != m.end());
-    // cout << "Key: " << i->first << " Value: " << &i->second.name1 << '\n';
+        if (cDocNode->next) {
+            cDocNode = cDocNode->next;
+        } else {
+            break;
+        }
+
+    }
   
     return 0;
 }
