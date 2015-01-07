@@ -8,44 +8,23 @@
 #include <iterator>
 #include <vector>
 
-#include <math.h>  
+#include <math.h>
 
-using namespace std; 
+#include "document.h"
+#include "docnode.h"
+#include "term.h"
 
+using namespace std;
 
-class Document
-{
-    public:
-        string value;
-};
+map<string, Term*> vector_space;
+vector<Document*> docs;
+int readed_docs_len;
 
-class DocNode
-{
-    public:
-        Document* doc;
-        DocNode* next;
-        int tf;
-
-};
-
-class Term
-{
-    public:
-        string name;
-        double idf;
-        DocNode* docNode;
-        int nt;
-
-};
-
-int main(int argc, char **argv)
+int readDocuments()
 {
     string readed_docs[4] = {"A A A B","A A C","A A","B B"};
 
     int readed_docs_len = (sizeof(readed_docs)/sizeof(*readed_docs));
-
-    map<string, Term*> vector_space;
-    vector<Document*> docs;
 
     //Read all documents and put they in memory
     for (int i=0; i<readed_docs_len; i++) 
@@ -55,8 +34,13 @@ int main(int argc, char **argv)
         docs.push_back(doc);
     }
 
+    return readed_docs_len;
+}
+
+void indexDocuments()
+{
     //Iterate in docs
-    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) { 
+    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) {
 
         map<string, DocNode*> map_doc_vocab;
 
@@ -70,7 +54,6 @@ int main(int argc, char **argv)
               back_inserter( doc_vocab ) );
 
         for(vector<string>::iterator it = doc_vocab.begin(); it != doc_vocab.end(); ++it) {
-            
             
             if (map_doc_vocab.find(*it) == map_doc_vocab.end())
             {
@@ -109,27 +92,134 @@ int main(int argc, char **argv)
             }
         }
     }
+}
 
-    //Search a term
-    Term* tmpTerm = vector_space["C"];
+//Calculate the TFIDF vector of all documents for each term
+//The documents vector should be sparse
+void calcTFIDFDocuments()
+{
 
-    DocNode* cDocNode = tmpTerm->docNode;
+    //Create a sparse vectort for each document
+    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
+    {
+        (*it_doc)->vectorTFIDF = new double[vector_space.size()];
+    }
 
-    while (true) {
+    int i = 0;
 
-        cout << " Doc: " << cDocNode->doc->value << '\n';
-        cout << " TF: "  << cDocNode->tf << '\n';
-        cout << " NT: "  << tmpTerm->nt << '\n';
+    //Fill the tfidf of each document regard the idf of the term
+    for (map<string, Term*>::iterator it_term=vector_space.begin(); it_term!=vector_space.end(); ++it_term)
+    {
 
-        cout << " TFxIDF - "<< log((double)readed_docs_len/tmpTerm->nt) * cDocNode->tf << '\n';
+        Term* term = it_term->second;
 
-        if (cDocNode->next) {
-            cDocNode = cDocNode->next;
-        } else {
-            break;
+        double idf = log((double)readed_docs_len/term->nt);
+
+        DocNode* currentDocNode = term->docNode;
+
+        while (true) {
+
+            double tfidf = idf * currentDocNode->tf;
+
+            currentDocNode->doc->vectorTFIDF[i] = tfidf;
+
+            if (currentDocNode->next) {
+                currentDocNode = currentDocNode->next;
+            } else {
+                break;
+            }
+
         }
 
+        i++;
     }
-  
+
+    // for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
+    // {
+
+    //     cout << " Doc: " << (*it_doc)->value << " = ";
+           
+    //     for(int i=0;i< vector_space.size();i++)
+    //     {
+    //         cout << (*it_doc)->vectorTFIDF[i] << ",";
+    //     }
+
+    //     cout << '\n';
+    // }
+}
+
+//This method returns the tfidf vector from the query
+double * processQuery(const string query)
+{
+    map<string, int> map_query_vocab;
+
+    vector<string> query_vocab;
+
+    double* vectorTFIDF = new double[vector_space.size()];
+
+    istringstream iss(query);
+        
+    copy( istream_iterator<string>( iss),
+          istream_iterator<string>(),
+          back_inserter(query_vocab) );
+
+    for(vector<string>::iterator it = query_vocab.begin(); it != query_vocab.end(); ++it) 
+    {
+
+        if (map_query_vocab.find(*it) == map_query_vocab.end()) 
+        {
+            map_query_vocab[*it] = 1;
+        }
+        else
+        {
+            map_query_vocab[*it]++;
+        }
+    }
+
+    int i = 0;
+
+    for (map<string, Term*>::iterator it_term=vector_space.begin(); it_term!=vector_space.end(); ++it_term)
+    {
+
+        Term* term = it_term->second;
+
+        double idf = log((double)readed_docs_len/term->nt);
+
+        if(map_query_vocab.find(term->name) !=  map_query_vocab.end())
+        {
+            vectorTFIDF[i] = idf * map_query_vocab[term->name];
+        }
+
+        i++;
+    }
+
+    //TODO - Calculate similarity (cos distance) between the query vector and the vector of each document of term invertd list
+
+    return vectorTFIDF;
+}
+
+void searchDocs(const string &query)
+{
+    double* v = processQuery(query);
+
+    // for(int i=0;i< vector_space.size();i++)
+    // {
+    //     cout << v[i] << ",";
+    // }
+
+}
+
+int main(int argc, char **argv)
+{
+    
+    readed_docs_len = readDocuments();
+
+    indexDocuments();
+
+    //TODO - call it inside indexDocuments()
+    calcTFIDFDocuments();
+
+    searchDocs("A");
+    
     return 0;
 }
