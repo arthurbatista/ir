@@ -8,4 +8,6 @@ class Document
     public:
         string value;
         double* vectorTFIDF;
+        double norma;
+        double tempCosDistance;
 };

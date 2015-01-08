@@ -96,7 +96,7 @@ void indexDocuments()
 
 //Calculate the TFIDF vector of all documents for each term
 //The documents vector should be sparse
-void calcTFIDFDocuments()
+void processDocuments()
 {
 
     //Create a sparse vectort for each document
@@ -133,6 +133,20 @@ void calcTFIDFDocuments()
 
         i++;
     }
+
+    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
+    {
+        for(int j=0; j<= vector_space.size(); j++) 
+        {
+            (*it_doc)->norma += pow((*it_doc)->vectorTFIDF[j],2);
+        }
+
+        (*it_doc)->norma = sqrt((*it_doc)->norma);
+
+        // cout << " Doc: " << (*it_doc)->value << " = " <<  (*it_doc)->norma << "\n";
+        
+    }
+
 
     // for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
     // {
@@ -200,13 +214,49 @@ double * processQuery(const string query)
 
 void searchDocs(const string &query)
 {
-    double* v = processQuery(query);
 
-    // for(int i=0;i< vector_space.size();i++)
-    // {
-    //     cout << v[i] << ",";
-    // }
+    double* queryVectorTFIDF = processQuery(query);
 
+    vector<string> query_vocab;
+
+    istringstream iss(query);
+        
+    copy( istream_iterator<string>( iss),
+          istream_iterator<string>(),
+          back_inserter(query_vocab) );
+
+    //calculate Cos Distance between query and docs
+    for(vector<string>::iterator it = query_vocab.begin(); it != query_vocab.end(); ++it) 
+    {
+        if (vector_space.find(*it) != vector_space.end())
+        {
+
+            Term* term = vector_space[*it];
+
+            DocNode* currentDocNode = term->docNode;
+
+            while (true) {
+
+                double accum = 0;
+
+                for(int i=0;i< vector_space.size();i++)
+                {   
+                    accum += queryVectorTFIDF[i] * currentDocNode->doc->vectorTFIDF[i];
+                }
+
+                currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
+
+                // cout << currentDocNode->doc->value << " - " << accum << "/" << currentDocNode->doc->norma << " - " << currentDocNode->doc->tempCosDistance << "\n";
+                
+                if (currentDocNode->next) 
+                {
+                    currentDocNode = currentDocNode->next;
+                } else {
+                    break;
+                }
+            }
+        }        
+    }
 }
 
 int main(int argc, char **argv)
@@ -217,9 +267,9 @@ int main(int argc, char **argv)
     indexDocuments();
 
     //TODO - call it inside indexDocuments()
-    calcTFIDFDocuments();
+    processDocuments();
 
-    searchDocs("A");
+    searchDocs("A B");
     
     return 0;
 }
