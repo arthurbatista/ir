@@ -219,6 +219,8 @@ void searchDocs(const string &query)
 
     vector<string> query_vocab;
 
+    DocNode* docsResult = new DocNode();
+
     istringstream iss(query);
         
     copy( istream_iterator<string>( iss),
@@ -235,6 +237,11 @@ void searchDocs(const string &query)
 
             DocNode* currentDocNode = term->docNode;
 
+            if(!docsResult->doc)
+            {
+                docsResult->doc = currentDocNode->doc;
+            }
+
             while (true) {
 
                 double accum = 0;
@@ -246,16 +253,92 @@ void searchDocs(const string &query)
 
                 currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
 
-                // cout << currentDocNode->doc->value << " - " << accum << "/" << currentDocNode->doc->norma << " - " << currentDocNode->doc->tempCosDistance << "\n";
+                DocNode* tmpDocNode = new DocNode();
+                tmpDocNode->doc = currentDocNode->doc;
+
+                DocNode* nextDocNode = docsResult;
+
+                bool firstPosition = true; 
+
                 
+                while(true)
+                {
+                    cout << "-------------- \n";
+
+                    cout << "tmpDoc: " << tmpDocNode->doc->value << " | " << tmpDocNode->doc->tempCosDistance <<"\n";
+                    cout << "nextDocNode: " << nextDocNode->doc->value << " | " << nextDocNode->doc->tempCosDistance <<"\n";
+
+                    if (tmpDocNode->doc->tempCosDistance < nextDocNode->doc->tempCosDistance)
+                    {
+                        cout << "11111 \n";
+
+                        if(nextDocNode->back)
+                        {
+                            nextDocNode->back->next = tmpDocNode;
+                        }
+                        
+                        tmpDocNode->next = nextDocNode;
+                        nextDocNode->back = tmpDocNode;
+                        nextDocNode = tmpDocNode;
+
+                        cout << "nextDocNode: " << nextDocNode->doc->value << " | " << nextDocNode->doc->tempCosDistance <<"\n";
+                        cout << "next next: " << nextDocNode->next->doc->value << " | " << nextDocNode->next->doc->tempCosDistance <<"\n";
+
+                        if(firstPosition)
+                        {
+                            docsResult = tmpDocNode;
+                        }
+
+                        break;
+                    }
+                    else
+                    {
+                        
+                        firstPosition = false;
+
+                        cout << "22222 \n";
+                        if(nextDocNode->next)
+                        {
+                            nextDocNode = nextDocNode->next;
+                        }
+                        else
+                        {
+                            if(tmpDocNode->doc != nextDocNode->doc)
+                            {
+                                nextDocNode->next = tmpDocNode;
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 if (currentDocNode->next) 
                 {
                     currentDocNode = currentDocNode->next;
-                } else {
+                } 
+                else 
+                {
                     break;
                 }
             }
         }        
+    }
+
+    DocNode* currentDocNode = docsResult;
+
+    while(true)
+    {
+
+        cout << "RESULT " << currentDocNode->doc->value << " - " << currentDocNode->doc->tempCosDistance << "\n";
+
+        if (currentDocNode->next) 
+        {
+            currentDocNode = currentDocNode->next;
+        } 
+        else 
+        {
+            break;
+        }
     }
 }
 
