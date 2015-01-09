@@ -253,6 +253,7 @@ void searchDocs(const string &query)
 
                 currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
 
+                //The code below implements a linked list that contains the result docs ordered by cos distance
                 DocNode* tmpDocNode = new DocNode();
                 tmpDocNode->doc = currentDocNode->doc;
 
@@ -260,18 +261,13 @@ void searchDocs(const string &query)
 
                 bool firstPosition = true; 
 
-                
                 while(true)
                 {
-                    cout << "-------------- \n";
 
-                    cout << "tmpDoc: " << tmpDocNode->doc->value << " | " << tmpDocNode->doc->tempCosDistance <<"\n";
-                    cout << "nextDocNode: " << nextDocNode->doc->value << " | " << nextDocNode->doc->tempCosDistance <<"\n";
-
+                    //When a doc has the cos distance less than a doc in linked list
+                    //the first doc takes the place of the second
                     if (tmpDocNode->doc->tempCosDistance < nextDocNode->doc->tempCosDistance)
                     {
-                        cout << "11111 \n";
-
                         if(nextDocNode->back)
                         {
                             nextDocNode->back->next = tmpDocNode;
@@ -281,9 +277,8 @@ void searchDocs(const string &query)
                         nextDocNode->back = tmpDocNode;
                         nextDocNode = tmpDocNode;
 
-                        cout << "nextDocNode: " << nextDocNode->doc->value << " | " << nextDocNode->doc->tempCosDistance <<"\n";
-                        cout << "next next: " << nextDocNode->next->doc->value << " | " << nextDocNode->next->doc->tempCosDistance <<"\n";
-
+                        //This is necessary to keep the pointer pointing to the first postion of
+                        //the linked list result
                         if(firstPosition)
                         {
                             docsResult = tmpDocNode;
@@ -296,7 +291,8 @@ void searchDocs(const string &query)
                         
                         firstPosition = false;
 
-                        cout << "22222 \n";
+                        //If a doc has the cos distance greater than a doc in linked list
+                        //check the next
                         if(nextDocNode->next)
                         {
                             nextDocNode = nextDocNode->next;
@@ -312,6 +308,7 @@ void searchDocs(const string &query)
                     }
                 }
 
+                //Caculate the cos distance to all docs of the term inverted list
                 if (currentDocNode->next) 
                 {
                     currentDocNode = currentDocNode->next;
