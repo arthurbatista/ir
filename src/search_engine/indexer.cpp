@@ -219,6 +219,8 @@ void searchDocs(const string &query)
 
     vector<string> query_vocab;
 
+    vector<string> processed_terms;
+
     DocNode* docsResult = new DocNode();
 
     istringstream iss(query);
@@ -230,8 +232,12 @@ void searchDocs(const string &query)
     //calculate Cos Distance between query and docs
     for(vector<string>::iterator it = query_vocab.begin(); it != query_vocab.end(); ++it) 
     {
-        if (vector_space.find(*it) != vector_space.end())
+        bool term_aready_processed = find(processed_terms.begin(), processed_terms.end(), *it) != processed_terms.end();
+
+        if (!term_aready_processed && vector_space.find(*it) != vector_space.end())
         {
+
+            processed_terms.push_back(*it);
 
             Term* term = vector_space[*it];
 
@@ -350,6 +356,12 @@ int main(int argc, char **argv)
     processDocuments();
 
     searchDocs("A B");
-    
+
+    cout << "DONE \n";
+
+    searchDocs("B B");
+
+    cout << "DONE \n";
+
     return 0;
 }
