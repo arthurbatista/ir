@@ -10,4 +10,5 @@ class Document
         double* vectorTFIDF;
         double norma;
         double tempCosDistance;
+        string img;
 };

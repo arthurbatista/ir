@@ -7,34 +7,29 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
+#include <set>
 
 #include <math.h>
 
 #include "document.h"
+
 #include "docnode.h"
 #include "term.h"
 
+#include "parser.h"
+
 using namespace std;
 
+map<string,vector<string> > mapQueryResults;
 map<string, Term*> vector_space;
 vector<Document*> docs;
 int readed_docs_len;
 
 int readDocuments()
 {
-    string readed_docs[4] = {"A A A B","A A C","A A","B B"};
+    docs = ProductParser::parseProducts();
 
-    int readed_docs_len = (sizeof(readed_docs)/sizeof(*readed_docs));
-
-    //Read all documents and put they in memory
-    for (int i=0; i<readed_docs_len; i++) 
-    {
-        Document* doc = new Document();
-        doc->value = readed_docs[i];
-        docs.push_back(doc);
-    }
-
-    return readed_docs_len;
+    return docs.size();
 }
 
 void indexDocuments()
@@ -113,7 +108,7 @@ void processDocuments()
 
         Term* term = it_term->second;
 
-        double idf = log((double)readed_docs_len/term->nt);
+        double idf = log2((double)readed_docs_len/term->nt);
 
         DocNode* currentDocNode = term->docNode;
 
@@ -142,24 +137,7 @@ void processDocuments()
         }
 
         (*it_doc)->norma = sqrt((*it_doc)->norma);
-
-        // cout << " Doc: " << (*it_doc)->value << " = " <<  (*it_doc)->norma << "\n";
-        
     }
-
-
-    // for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
-    // {
-
-    //     cout << " Doc: " << (*it_doc)->value << " = ";
-           
-    //     for(int i=0;i< vector_space.size();i++)
-    //     {
-    //         cout << (*it_doc)->vectorTFIDF[i] << ",";
-    //     }
-
-    //     cout << '\n';
-    // }
 }
 
 //This method returns the tfidf vector from the query
@@ -179,7 +157,6 @@ double * processQuery(const string query)
 
     for(vector<string>::iterator it = query_vocab.begin(); it != query_vocab.end(); ++it) 
     {
-
         if (map_query_vocab.find(*it) == map_query_vocab.end()) 
         {
             map_query_vocab[*it] = 1;
@@ -194,10 +171,9 @@ double * processQuery(const string query)
 
     for (map<string, Term*>::iterator it_term=vector_space.begin(); it_term!=vector_space.end(); ++it_term)
     {
-
         Term* term = it_term->second;
 
-        double idf = log((double)readed_docs_len/term->nt);
+        double idf = log2((double)readed_docs_len/term->nt);
 
         if(map_query_vocab.find(term->name) !=  map_query_vocab.end())
         {
@@ -208,14 +184,15 @@ double * processQuery(const string query)
     }
 
     //TODO - Calculate similarity (cos distance) between the query vector and the vector of each document of term invertd list
-
     return vectorTFIDF;
 }
 
-void searchDocs(const string &query)
+DocNode* searchDocs(const string &query)
 {
 
-    double* queryVectorTFIDF = processQuery(query);
+    string queryNormalized = ProductParser::normalizeString(query);
+
+    double* queryVectorTFIDF = processQuery(queryNormalized);
 
     vector<string> query_vocab;
 
@@ -223,7 +200,7 @@ void searchDocs(const string &query)
 
     DocNode* docsResult = new DocNode();
 
-    istringstream iss(query);
+    istringstream iss(queryNormalized);
         
     copy( istream_iterator<string>( iss),
           istream_iterator<string>(),
@@ -272,7 +249,7 @@ void searchDocs(const string &query)
 
                     //When a doc has the cos distance less than a doc in linked list
                     //the first doc takes the place of the second
-                    if (tmpDocNode->doc->tempCosDistance < nextDocNode->doc->tempCosDistance)
+                    if (tmpDocNode->doc->tempCosDistance > nextDocNode->doc->tempCosDistance)
                     {
                         if(nextDocNode->back)
                         {
@@ -301,6 +278,9 @@ void searchDocs(const string &query)
                         //check the next
                         if(nextDocNode->next)
                         {
+                            if(tmpDocNode->doc == nextDocNode->doc)
+                                break;
+
                             nextDocNode = nextDocNode->next;
                         }
                         else
@@ -327,41 +307,52 @@ void searchDocs(const string &query)
         }        
     }
 
-    DocNode* currentDocNode = docsResult;
+    return docsResult;
+}
 
-    while(true)
+void processQuery() 
+{
+    for (map<string, vector<string> >::iterator it=mapQueryResults.begin(); it!=mapQueryResults.end(); ++it)
     {
+        DocNode* docResult = searchDocs(it->first);
 
-        cout << "RESULT " << currentDocNode->doc->value << " - " << currentDocNode->doc->tempCosDistance << "\n";
+        int index_result = 0;
+        while(true)
+        {   
+            if (find(it->second.begin(), it->second.end(), docResult->doc->img) != it->second.end())
+            {
+                cout << docResult->doc->img << " - " << docResult->doc->tempCosDistance << " " << index_result << "\n";
+            }
 
-        if (currentDocNode->next) 
-        {
-            currentDocNode = currentDocNode->next;
-        } 
-        else 
-        {
-            break;
+            if (docResult->next) 
+            {
+                docResult = docResult->next;
+            } 
+            else 
+            {
+                break;
+            }
+
+            if(index_result < 9)
+                index_result++;
+            else
+                break;
         }
     }
 }
 
 int main(int argc, char **argv)
 {
+
+    mapQueryResults = ProductParser::parseQueryResult();
     
     readed_docs_len = readDocuments();
 
     indexDocuments();
 
-    //TODO - call it inside indexDocuments()
     processDocuments();
 
-    searchDocs("A B");
-
-    cout << "DONE \n";
-
-    searchDocs("B B");
-
-    cout << "DONE \n";
+    processQuery();
 
     return 0;
 }
