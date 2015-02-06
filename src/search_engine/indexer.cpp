@@ -11,6 +11,8 @@
 
 #include <math.h>
 
+#include "query_result.h"
+
 #include "document.h"
 
 #include "docnode.h"
@@ -20,7 +22,7 @@
 
 using namespace std;
 
-map<string,vector<string> > mapQueryResults;
+vector<QueryResult*> queryResults;
 map<string, Term*> vector_space;
 vector<Document*> docs;
 int readed_docs_len;
@@ -35,7 +37,8 @@ int readDocuments()
 void indexDocuments()
 {
     //Iterate in docs
-    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) {
+    for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
+    {
 
         map<string, DocNode*> map_doc_vocab;
 
@@ -310,41 +313,52 @@ DocNode* searchDocs(const string &query)
     return docsResult;
 }
 
+double precision10(vector<string> relevantDocs, DocNode* docsResult) 
+{
+    int amount_relevant = 0;
+    int index_result = 0;
+    while(true)
+    {   
+        if (find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
+        {
+            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            amount_relevant++;
+        }
+
+        if (docsResult->next) 
+        {
+            docsResult = docsResult->next;
+        } 
+        else 
+        {
+            break;
+        }
+
+        if(index_result < 9)
+            index_result++;
+        else
+            break;
+    }
+
+    return amount_relevant/10.0;
+}
+
 void processQuery() 
 {
-    for (map<string, vector<string> >::iterator it=mapQueryResults.begin(); it!=mapQueryResults.end(); ++it)
+    // for (map<string, vector<string> >::iterator it=mapQueryResults.begin(); it!=mapQueryResults.end(); ++it)
+    for(vector<QueryResult*>::iterator it = queryResults.begin(); it != queryResults.end(); ++it)
     {
-        DocNode* docResult = searchDocs(it->first);
+        DocNode* docsResult = searchDocs((*it)->query);
 
-        int index_result = 0;
-        while(true)
-        {   
-            if (find(it->second.begin(), it->second.end(), docResult->doc->img) != it->second.end())
-            {
-                cout << docResult->doc->img << " - " << docResult->doc->tempCosDistance << " " << index_result << "\n";
-            }
-
-            if (docResult->next) 
-            {
-                docResult = docResult->next;
-            } 
-            else 
-            {
-                break;
-            }
-
-            if(index_result < 9)
-                index_result++;
-            else
-                break;
-        }
+        cout << precision10((*it)->relevantResults,docsResult);
+        cout << endl;
     }
 }
 
 int main(int argc, char **argv)
 {
 
-    mapQueryResults = ProductParser::parseQueryResult();
+    queryResults = ProductParser::parseQueryResult();
     
     readed_docs_len = readDocuments();
 

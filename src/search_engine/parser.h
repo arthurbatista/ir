@@ -156,10 +156,10 @@ class ProductParser
             return results;
         }
 
-        static map<string,vector<string> > parseQueryResult()
+        static vector<QueryResult*> parseQueryResult()
         {
 
-            map<string,vector<string> > maQueryResult;
+            vector<QueryResult*> queryResults;
 
             ifstream queryFile;
 
@@ -176,11 +176,13 @@ class ProductParser
                 queryFile.close();
                 queryFile.clear();
 
-                maQueryResult[query] = ProductParser::parseResults(query_index);
+                QueryResult* queryResult = new QueryResult();
+                queryResult->query = query;
+                queryResult->relevantResults = ProductParser::parseResults(query_index);
 
-                queryFile.close();
+                queryResults.push_back(queryResult);
             }
 
-            return maQueryResult;
+            return queryResults;
         }
 };
