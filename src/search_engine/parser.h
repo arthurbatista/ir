@@ -10,7 +10,7 @@
 
 #include <set>
 
-#include "rapidxml.hpp"
+#include "rapidxml/rapidxml.hpp"
 
 using namespace rapidxml;
 using namespace std;

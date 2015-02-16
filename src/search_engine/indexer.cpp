@@ -345,7 +345,6 @@ double precision10(vector<string> relevantDocs, DocNode* docsResult)
 
 void processQuery() 
 {
-    // for (map<string, vector<string> >::iterator it=mapQueryResults.begin(); it!=mapQueryResults.end(); ++it)
     for(vector<QueryResult*>::iterator it = queryResults.begin(); it != queryResults.end(); ++it)
     {
         DocNode* docsResult = searchDocs((*it)->query);
