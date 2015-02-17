@@ -6,7 +6,7 @@ class Document
 {
     public:
         string value;
-        double* vectorTFIDF;
+        map<string,double> vectorTFIDF;
         double norma;
         double tempCosDistance;
         string img;

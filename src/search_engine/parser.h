@@ -57,7 +57,7 @@ class ProductParser
             
             // Read the xml file into a vector
             ifstream theFile ("textDescDafitiPosthaus.xml");
-            // ifstream theFile ("p.xml");
+            // ifstream theFile ("p2.xml");
             // ifstream theFile ("output.xml");
             
             vector<char> buffer((istreambuf_iterator<char>(theFile)), istreambuf_iterator<char>());
