@@ -56,8 +56,9 @@ class ProductParser
             xml_node<> * root_node;
             
             // Read the xml file into a vector
-            // ifstream theFile ("produtos.xml");
             ifstream theFile ("textDescDafitiPosthaus.xml");
+            // ifstream theFile ("p.xml");
+            // ifstream theFile ("output.xml");
             
             vector<char> buffer((istreambuf_iterator<char>(theFile)), istreambuf_iterator<char>());
             buffer.push_back('\0');
@@ -72,6 +73,7 @@ class ProductParser
             for (xml_node<> * product = root_node->first_node("produto"); product; product = product->next_sibling())
             {
                 
+                //Normilize title
                 string title = product->first_node("titulo")->value();
 
                 istringstream iss_title(title);
@@ -94,6 +96,7 @@ class ProductParser
                     }
                 }
 
+                //Normilize descricao
                 string desc = product->first_node("descricao")->value();
 
                 istringstream iss_desc(desc);
@@ -111,9 +114,12 @@ class ProductParser
                         desc_normalized += desc_term + " ";
                 }
 
+                //Read image words
+                // string img_words = product->first_node("img_words")->value();
+
                 //Read all documents and put they in memory
                 Document* doc = new Document();
-                doc->value    = title_normalized + desc_normalized;
+                doc->value    =  title_normalized + desc_normalized;
                 doc->img      = product->first_node("img")->value();
 
                 docs.push_back(doc);

@@ -11,6 +11,8 @@
 
 #include <math.h>
 
+#include <iomanip>  
+
 #include "query_result.h"
 
 #include "document.h"
@@ -97,7 +99,7 @@ void indexDocuments()
 void processDocuments()
 {
 
-    //Create a sparse vectort for each document
+    //Create a sparse vector for each document
     for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
     {
         (*it_doc)->vectorTFIDF = new double[vector_space.size()];
@@ -313,16 +315,22 @@ DocNode* searchDocs(const string &query)
     return docsResult;
 }
 
-double precision10(vector<string> relevantDocs, DocNode* docsResult) 
+int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult) 
 {
     int amount_relevant = 0;
     int index_result = 0;
+    int* precisions = new int[10];
+
     while(true)
     {   
-        if (find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
+        if (docsResult->doc && find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
         {
-            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
-            amount_relevant++;
+            // cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            precisions[index_result] = ++amount_relevant;
+        }
+        else
+        {
+            precisions[index_result] = 0;   
         }
 
         if (docsResult->next) 
@@ -335,13 +343,55 @@ double precision10(vector<string> relevantDocs, DocNode* docsResult)
         }
 
         if(index_result < 9)
+        {
             index_result++;
+        }
         else
+        {
             break;
+        }
     }
 
-    return amount_relevant/10.0;
+    // for (int i = 0; i < 10; ++i)
+    // {
+    //    cout << precisions[i] << ",";
+    // }
+
+    // cout << endl;
+
+    return precisions;
 }
+
+double calcP_10(int* precisions)
+{   
+
+    int totalRelevants = 0;
+
+    for (int i = 0; i < 10; ++i)
+    {
+        if(precisions[i]>0)
+            totalRelevants++;
+    }
+
+    return totalRelevants / 10.000;
+}
+
+double calcMAP(int* precisions)
+{   
+
+    double map = 0.0;
+
+    for (int i = 0; i < 10; ++i)
+    {
+        if(precisions[i]>0)
+        {
+            map += precisions[i] / (i+1.000);
+        }
+    }
+
+    return map/10.000;
+}
+
 
 void processQuery() 
 {
@@ -349,8 +399,14 @@ void processQuery()
     {
         DocNode* docsResult = searchDocs((*it)->query);
 
-        cout << precision10((*it)->relevantResults,docsResult);
-        cout << endl;
+        cout << "########## Consulta: " << (*it)->query << endl;
+        
+        int* precisions = calcPrecision((*it)->relevantResults,docsResult);
+
+        cout << "P@10 - " << fixed << setprecision(3) << calcP_10(precisions) << endl;
+
+        cout << "MAP  - " << fixed << setprecision(3) << calcMAP(precisions) << endl;
+
     }
 }
 
