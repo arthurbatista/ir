@@ -5,7 +5,7 @@ using namespace std;
 class Document
 {
     public:
-        string value;
+        vector<string> doc_vocab; 
         map<string,double> vectorTFIDF;
         double norma;
         double tempCosDistance;

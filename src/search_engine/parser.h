@@ -73,6 +73,8 @@ class ProductParser
             for (xml_node<> * product = root_node->first_node("produto"); product; product = product->next_sibling())
             {
                 
+                vector<string> doc_vocab; 
+
                 //Normilize title
                 string title = product->first_node("titulo")->value();
 
@@ -84,15 +86,13 @@ class ProductParser
                       istream_iterator<string>(),
                       back_inserter(xmlTerms) );
 
-                string title_normalized;
-
                 for(vector<string>::iterator it = xmlTerms.begin(); it != xmlTerms.end(); ++it) 
                 {
                     string item_term = normalizeString(*it);
 
                     if (stop_words.find(item_term) == stop_words.end())
                     {
-                        title_normalized += item_term + " ";
+                        doc_vocab.push_back(item_term);
                     }
                 }
 
@@ -105,28 +105,67 @@ class ProductParser
                       istream_iterator<string>(),
                       back_inserter(xmlTerms) );
 
-                string desc_normalized;
-
                 for(vector<string>::iterator it = xmlTerms.begin(); it != xmlTerms.end(); ++it) 
                 {
                     string desc_term = normalizeString(*it);
                     if (stop_words.find(desc_term) == stop_words.end())
-                        desc_normalized += desc_term + " ";
+                    {
+                        doc_vocab.push_back(desc_term);
+                    }
                 }
 
-                //Read image words
-                // string img_words = product->first_node("img_words")->value();
-
                 //Read all documents and put they in memory
-                Document* doc = new Document();
-                doc->value    =  title_normalized + desc_normalized;
-                doc->img      = product->first_node("img")->value();
+                Document* doc  = new Document();
+                doc->img       = product->first_node("img")->value();
+                doc->doc_vocab = doc_vocab;
 
                 docs.push_back(doc);
             }
 
             return docs;
         }
+
+        static vector<Document*> parseProductsImage()
+        {
+            vector<Document*> docs;
+
+            for (int i = 1; i <= 4; ++i)
+            {
+                ostringstream chunk_file;
+                chunk_file << "chunk_" << i << ".txt";
+
+                // chunk_file << "test_chunk.txt";
+
+                ifstream file(chunk_file.str().c_str());
+                string str;
+
+                while (getline(file, str))
+                {
+                    vector<string> img_vocab;
+
+                    istringstream iss(str);
+                        
+                    copy( istream_iterator<string>( iss),
+                          istream_iterator<string>(),
+                          back_inserter(img_vocab) );
+
+                    Document* doc  = new Document();
+                    doc->img       = img_vocab.at(0);
+
+                    //Remove first element since it is the image name
+                    img_vocab.erase(img_vocab.begin());
+                    doc->doc_vocab = img_vocab;
+
+                    docs.push_back(doc);
+                }
+
+                file.close();
+                file.clear();
+            }
+
+            return docs;
+        }
+
 
         static vector<string> parseResults(int result_index)
         {
@@ -139,7 +178,6 @@ class ProductParser
             xml_node<> * root_node;
             
             // Read the xml file into a vector
-            // ifstream theFile ("produtos.xml");
             ifstream file(resultFileName.str().c_str());
             
             vector<char> buffer((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
@@ -188,6 +226,47 @@ class ProductParser
 
                 queryResults.push_back(queryResult);
             }
+
+            return queryResults;
+        }
+
+        static vector<QueryResult*> parseImageQueryResult()
+        {
+
+            vector<QueryResult*> queryResults;
+
+            // ifstream queryFile;
+
+            ifstream queryFile("test_query.txt");
+            string str;
+
+            int query_index=1;
+
+            while (getline(queryFile, str))
+            {
+                // vector<string> img_vocab;
+
+                // istringstream iss(str);
+                    
+                // copy( istream_iterator<string>( iss),
+                //       istream_iterator<string>(),
+                //       back_inserter(img_vocab) );
+
+                // img_vocab.at(1);
+
+                // //Remove first element since it is the image name
+                // img_vocab.erase(img_vocab.begin());
+                // img_vocab;
+
+                QueryResult* queryResult = new QueryResult();
+                queryResult->query = str;
+                queryResult->relevantResults = ProductParser::parseResults(query_index++);
+
+                queryResults.push_back(queryResult);
+            }
+
+            queryFile.close();
+            queryFile.clear();
 
             return queryResults;
         }

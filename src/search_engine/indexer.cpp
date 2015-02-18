@@ -27,11 +27,17 @@ using namespace std;
 vector<QueryResult*> queryResults;
 map<string, Term*> vector_space;
 vector<Document*> docs;
-int readed_docs_len;
 
 int readDocuments()
 {
     docs = ProductParser::parseProducts();
+
+    return docs.size();
+}
+
+int readDocumentsImage()
+{
+    docs = ProductParser::parseProductsImage();
 
     return docs.size();
 }
@@ -41,21 +47,13 @@ void indexDocuments()
     //Iterate in docs
     for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
     {
-
         map<string, DocNode*> map_doc_vocab;
 
-        //Split current document in an vector of strings
-        istringstream iss((*it_doc)->value);
-
-        vector<string> doc_vocab; 
-        
-        copy( istream_iterator<string>( iss),
-              istream_iterator<string>(),
-              back_inserter( doc_vocab ) );
-
-        for(vector<string>::iterator it = doc_vocab.begin(); it != doc_vocab.end(); ++it) {
+        for(vector<string>::iterator it = (*it_doc)->doc_vocab.begin(); it != (*it_doc)->doc_vocab.end(); ++it) {
             
-            if (map_doc_vocab.find(*it) == map_doc_vocab.end())
+            map<string, DocNode*>::iterator it_map_doc_vocab = map_doc_vocab.find(*it);
+
+            if (it_map_doc_vocab == map_doc_vocab.end())
             {
                 DocNode* docNode = new DocNode();
                 docNode->doc = *it_doc;
@@ -64,9 +62,9 @@ void indexDocuments()
                 map_doc_vocab[*it] = docNode;
 
                 //If the keyword doesn't exist, create a new term
-                if (vector_space.find(*it) == vector_space.end())
+                map<string, Term*>::iterator it_vector_space = vector_space.find(*it);
+                if (it_vector_space == vector_space.end())
                 {
-
                     Term* term = new Term();
                     term->name = *it;
                     //Accumulate the amount of documents where the term appears
@@ -77,7 +75,7 @@ void indexDocuments()
                 }
                 else 
                 {
-                    Term* tmpTerm = vector_space[*it];
+                    Term* tmpTerm = it_vector_space->second;
                     tmpTerm->nt++;
 
                     docNode->next = tmpTerm->docNode;
@@ -88,7 +86,7 @@ void indexDocuments()
             else 
             {
                 //Accumulate the amount of each term for the current document = TF
-                map_doc_vocab[*it]->tf++;
+                it_map_doc_vocab->second->tf++;
             }
         }
     }
@@ -107,7 +105,7 @@ void processDocuments()
 
         Term* term = it_term->second;
 
-        double idf = log2((double)readed_docs_len/term->nt);
+        double idf = log2((double)docs.size()/term->nt);
 
         DocNode* currentDocNode = term->docNode;
 
@@ -144,10 +142,9 @@ map<string,double> processQuery(const string query)
 {
     map<string, int> map_query_vocab;
 
-    vector<string> query_vocab;
-
-    // double* vectorTFIDF = new double[vector_space.size()];
     map<string,double> vectorTFIDF;
+
+    vector<string> query_vocab;
 
     istringstream iss(query);
         
@@ -169,11 +166,13 @@ map<string,double> processQuery(const string query)
 
     for(map<string, int>::iterator it_tfidf = map_query_vocab.begin(); it_tfidf != map_query_vocab.end(); ++it_tfidf)
     {
-        Term* term = vector_space[it_tfidf->first];
+        map<string, Term*>::iterator it_term = vector_space.find(it_tfidf->first);
 
-        if(term)
+        if(it_term != vector_space.end())
         {
-            double idf = log2((double)readed_docs_len/term->nt);
+            Term* term = it_term->second;
+
+            double idf = log2((double)docs.size()/term->nt);
             vectorTFIDF[term->name] = idf * it_tfidf->second;
         }
     }
@@ -183,8 +182,8 @@ map<string,double> processQuery(const string query)
 
 DocNode* searchDocs(const string &query)
 {
-
-    string queryNormalized = ProductParser::normalizeString(query);
+    string queryNormalized = query;
+    // string queryNormalized = ProductParser::normalizeString(query);
 
     map<string,double> queryVectorTFIDF = processQuery(queryNormalized);
 
@@ -205,106 +204,103 @@ DocNode* searchDocs(const string &query)
     {
         bool term_aready_processed = find(processed_terms.begin(), processed_terms.end(), *it) != processed_terms.end();
 
-        if (!term_aready_processed && vector_space.find(*it) != vector_space.end())
-        {
+        map<string, Term*>::iterator it_term = vector_space.find(*it);
 
+        if (!term_aready_processed && it_term != vector_space.end())
+        {
             processed_terms.push_back(*it);
 
-            Term* term = vector_space[*it];
+            Term* term = it_term->second;
 
-            if(term)
+            DocNode* currentDocNode = term->docNode;
+
+            if(!docsResult->doc)
             {
-                DocNode* currentDocNode = term->docNode;
+                docsResult->doc = currentDocNode->doc;
+            }
 
-                if(!docsResult->doc)
+            while (true) 
+            {
+                double accum = 0;
+
+                for(map<string, double>::iterator it_tfidf = queryVectorTFIDF.begin(); it_tfidf != queryVectorTFIDF.end(); ++it_tfidf)
                 {
-                    docsResult->doc = currentDocNode->doc;
+                    map<string,double>::iterator it_doc_tfidf = currentDocNode->doc->vectorTFIDF.find(it_tfidf->first);
+
+                    if(it_doc_tfidf != currentDocNode->doc->vectorTFIDF.end())
+                    {
+                        accum += it_doc_tfidf->second * it_tfidf->second;
+                    }
                 }
 
-                while (true) 
+                currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
+
+                //The code below implements a linked list that contains the result docs ordered by cos distance
+                DocNode* tmpDocNode = new DocNode();
+                tmpDocNode->doc = currentDocNode->doc;
+
+                DocNode* nextDocNode = docsResult;
+
+                bool firstPosition = true; 
+
+                while(true)
                 {
 
-                    double accum = 0;
-
-                    for(map<string, double>::iterator it_tfidf = queryVectorTFIDF.begin(); it_tfidf != queryVectorTFIDF.end(); ++it_tfidf)
+                    //When a doc has the cos distance less than a doc in linked list
+                    //the first doc takes the place of the second
+                    if (tmpDocNode->doc->tempCosDistance > nextDocNode->doc->tempCosDistance)
                     {
-                        double doc_tfidf = currentDocNode->doc->vectorTFIDF[it_tfidf->first];
-
-                        if(doc_tfidf)
+                        if(nextDocNode->back)
                         {
-                            accum += doc_tfidf * it_tfidf->second;
+                            nextDocNode->back->next = tmpDocNode;
                         }
-                    }
+                        
+                        tmpDocNode->next = nextDocNode;
+                        nextDocNode->back = tmpDocNode;
+                        nextDocNode = tmpDocNode;
 
-                    currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
-
-                    //The code below implements a linked list that contains the result docs ordered by cos distance
-                    DocNode* tmpDocNode = new DocNode();
-                    tmpDocNode->doc = currentDocNode->doc;
-
-                    DocNode* nextDocNode = docsResult;
-
-                    bool firstPosition = true; 
-
-                    while(true)
-                    {
-
-                        //When a doc has the cos distance less than a doc in linked list
-                        //the first doc takes the place of the second
-                        if (tmpDocNode->doc->tempCosDistance > nextDocNode->doc->tempCosDistance)
+                        //This is necessary to keep the pointer pointing to the first postion of
+                        //the linked list result
+                        if(firstPosition)
                         {
-                            if(nextDocNode->back)
-                            {
-                                nextDocNode->back->next = tmpDocNode;
-                            }
-                            
-                            tmpDocNode->next = nextDocNode;
-                            nextDocNode->back = tmpDocNode;
-                            nextDocNode = tmpDocNode;
+                            docsResult = tmpDocNode;
+                        }
 
-                            //This is necessary to keep the pointer pointing to the first postion of
-                            //the linked list result
-                            if(firstPosition)
-                            {
-                                docsResult = tmpDocNode;
-                            }
+                        break;
+                    }
+                    else
+                    {
+                        
+                        firstPosition = false;
 
-                            break;
+                        //If a doc has the cos distance greater than a doc in linked list
+                        //check the next
+                        if(nextDocNode->next)
+                        {
+                            if(tmpDocNode->doc == nextDocNode->doc)
+                                break;
+
+                            nextDocNode = nextDocNode->next;
                         }
                         else
                         {
-                            
-                            firstPosition = false;
-
-                            //If a doc has the cos distance greater than a doc in linked list
-                            //check the next
-                            if(nextDocNode->next)
+                            if(tmpDocNode->doc != nextDocNode->doc)
                             {
-                                if(tmpDocNode->doc == nextDocNode->doc)
-                                    break;
-
-                                nextDocNode = nextDocNode->next;
+                                nextDocNode->next = tmpDocNode;
                             }
-                            else
-                            {
-                                if(tmpDocNode->doc != nextDocNode->doc)
-                                {
-                                    nextDocNode->next = tmpDocNode;
-                                }
-                                break;
-                            }
+                            break;
                         }
                     }
+                }
 
-                    //Caculate the cos distance to all docs of the term inverted list
-                    if (currentDocNode->next) 
-                    {
-                        currentDocNode = currentDocNode->next;
-                    } 
-                    else 
-                    {
-                        break;
-                    }
+                //Caculate the cos distance to all docs of the term inverted list
+                if (currentDocNode->next) 
+                {
+                    currentDocNode = currentDocNode->next;
+                } 
+                else 
+                {
+                    break;
                 }
             }
         }        
@@ -319,11 +315,18 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
     int index_result = 0;
     int* precisions = new int[10];
 
+    for (int i = 0; i < 10; ++i)
+    {
+       precisions[i] = 0;
+    }
+
     while(true)
     {   
+        cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << "\n";
+
         if (docsResult->doc && find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
         {
-            // cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
             precisions[index_result] = ++amount_relevant;
         }
         else
@@ -397,7 +400,7 @@ void processQuery()
     {
         DocNode* docsResult = searchDocs((*it)->query);
 
-        cout << "########## Consulta: " << (*it)->query << endl;
+        cout << "########## Consulta: " << endl;//<< (*it)->query << endl;
         
         int* precisions = calcPrecision((*it)->relevantResults,docsResult);
 
@@ -411,12 +414,13 @@ void processQuery()
 int main(int argc, char **argv)
 {
 
-    queryResults = ProductParser::parseQueryResult();
-    
-    readed_docs_len = readDocuments();
+    // queryResults = ProductParser::parseQueryResult();
+    // readDocuments();
+
+    queryResults = ProductParser::parseImageQueryResult();
+    readDocumentsImage();
 
     indexDocuments();
-
     processDocuments();
 
     processQuery();
