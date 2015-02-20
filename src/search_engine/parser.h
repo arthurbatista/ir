@@ -57,8 +57,7 @@ class ProductParser
             
             // Read the xml file into a vector
             ifstream theFile ("textDescDafitiPosthaus.xml");
-            // ifstream theFile ("p2.xml");
-            // ifstream theFile ("output.xml");
+            //ifstream theFile ("test_DescDafitiPosthaus.xml");
             
             vector<char> buffer((istreambuf_iterator<char>(theFile)), istreambuf_iterator<char>());
             buffer.push_back('\0');
@@ -129,11 +128,10 @@ class ProductParser
         {
             vector<Document*> docs;
 
-            for (int i = 1; i <= 4; ++i)
+            for (int i = 1; i <= 7; ++i)
             {
                 ostringstream chunk_file;
-                chunk_file << "chunk_" << i << ".txt";
-
+                chunk_file << "sdlf/chunk_" << i << ".txt";
                 // chunk_file << "test_chunk.txt";
 
                 ifstream file(chunk_file.str().c_str());
@@ -235,30 +233,27 @@ class ProductParser
 
             vector<QueryResult*> queryResults;
 
-            // ifstream queryFile;
-
-            ifstream queryFile("test_query.txt");
+            ifstream queryFile("sdlf/queries.txt");
             string str;
 
             int query_index=1;
 
+            ifstream queryFile_i;
+
             while (getline(queryFile, str))
             {
-                // vector<string> img_vocab;
+                //Retrieve image name
+                ostringstream queryFileName_i;
+                queryFileName_i << "consultasDafiti/" << query_index << ".txt";
+                queryFile_i.open(queryFileName_i.str().c_str());
+                string image;
+                getline(queryFile_i, image);
+                queryFile_i.close();
+                queryFile_i.clear();
 
-                // istringstream iss(str);
-                    
-                // copy( istream_iterator<string>( iss),
-                //       istream_iterator<string>(),
-                //       back_inserter(img_vocab) );
-
-                // img_vocab.at(1);
-
-                // //Remove first element since it is the image name
-                // img_vocab.erase(img_vocab.begin());
-                // img_vocab;
-
+                //Crete QueryResult object
                 QueryResult* queryResult = new QueryResult();
+                queryResult->image = image;
                 queryResult->query = str;
                 queryResult->relevantResults = ProductParser::parseResults(query_index++);
 

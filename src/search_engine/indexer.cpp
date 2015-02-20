@@ -322,15 +322,14 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
 
     while(true)
     {   
-        cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << "\n";
-
         if (docsResult->doc && find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
         {
-            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            cout << "[R] " << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
             precisions[index_result] = ++amount_relevant;
         }
         else
         {
+            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
             precisions[index_result] = 0;   
         }
 
@@ -396,18 +395,19 @@ double calcMAP(int* precisions)
 
 void processQuery() 
 {
+    int query_index;
+
     for(vector<QueryResult*>::iterator it = queryResults.begin(); it != queryResults.end(); ++it)
     {
         DocNode* docsResult = searchDocs((*it)->query);
 
-        cout << "########## Consulta: " << endl;//<< (*it)->query << endl;
+        cout << "########## Consulta: " << query_index++ << (*it)->image << endl;
         
         int* precisions = calcPrecision((*it)->relevantResults,docsResult);
 
         cout << "P@10 - " << fixed << setprecision(3) << calcP_10(precisions) << endl;
 
         cout << "MAP  - " << fixed << setprecision(3) << calcMAP(precisions) << endl;
-
     }
 }
 
