@@ -39,7 +39,7 @@ class ProductParser
           return strConverted;
         }
 
-        static vector<Document*> parseProducts()
+        static vector<Document*> parseProducts(string path_products_desc)
         {
             vector<Document*> docs;
 
@@ -56,10 +56,9 @@ class ProductParser
             xml_node<> * root_node;
             
             // Read the xml file into a vector
-            ifstream theFile ("textDescDafitiPosthaus.xml");
-            //ifstream theFile ("test_DescDafitiPosthaus.xml");
+            ifstream file_products(path_products_desc.c_str());
             
-            vector<char> buffer((istreambuf_iterator<char>(theFile)), istreambuf_iterator<char>());
+            vector<char> buffer((istreambuf_iterator<char>(file_products)), istreambuf_iterator<char>());
             buffer.push_back('\0');
             
             // Parse the buffer using the xml file parsing library into doc
@@ -128,11 +127,10 @@ class ProductParser
         {
             vector<Document*> docs;
 
-            for (int i = 1; i <= 7; ++i)
+            for (int i = 1; i <= 4; ++i)
             {
                 ostringstream chunk_file;
                 chunk_file << "sdlf/chunk_" << i << ".txt";
-                // chunk_file << "test_chunk.txt";
 
                 ifstream file(chunk_file.str().c_str());
                 string str;
@@ -165,10 +163,10 @@ class ProductParser
         }
 
 
-        static vector<string> parseResults(int result_index)
+        static vector<string> parseRelevants(int result_index, string folder_relevantes)
         {
             ostringstream resultFileName;
-            resultFileName << "relevantes/" << result_index << "_relevante.xml";
+            resultFileName << folder_relevantes << result_index << "_relevante.xml";
 
             vector<string> results;
 
@@ -198,7 +196,7 @@ class ProductParser
             return results;
         }
 
-        static vector<QueryResult*> parseQueryResult()
+        static vector<QueryResult*> parseQueryResult(string folder_consultas, string folder_relevantes)
         {
 
             vector<QueryResult*> queryResults;
@@ -208,7 +206,7 @@ class ProductParser
             for (int query_index = 1; query_index <= 50; query_index++)
             {
                 ostringstream queryFileName;
-                queryFileName << "consultasDafiti/" << query_index << ".txt";
+                queryFileName << folder_consultas << query_index << ".txt";
 
                 queryFile.open(queryFileName.str().c_str());
 
@@ -220,7 +218,7 @@ class ProductParser
 
                 QueryResult* queryResult = new QueryResult();
                 queryResult->query = query;
-                queryResult->relevantResults = ProductParser::parseResults(query_index);
+                queryResult->relevantResults = ProductParser::parseRelevants(query_index,folder_relevantes);
 
                 queryResults.push_back(queryResult);
             }
@@ -228,7 +226,7 @@ class ProductParser
             return queryResults;
         }
 
-        static vector<QueryResult*> parseImageQueryResult()
+        static vector<QueryResult*> parseImageQueryResult(string folder_consultas, string folder_relevantes)
         {
 
             vector<QueryResult*> queryResults;
@@ -244,7 +242,7 @@ class ProductParser
             {
                 //Retrieve image name
                 ostringstream queryFileName_i;
-                queryFileName_i << "consultasDafiti/" << query_index << ".txt";
+                queryFileName_i << folder_consultas << query_index << ".txt";
                 queryFile_i.open(queryFileName_i.str().c_str());
                 string image;
                 getline(queryFile_i, image);
@@ -255,7 +253,7 @@ class ProductParser
                 QueryResult* queryResult = new QueryResult();
                 queryResult->image = image;
                 queryResult->query = str;
-                queryResult->relevantResults = ProductParser::parseResults(query_index++);
+                queryResult->relevantResults = ProductParser::parseRelevants(query_index++,folder_relevantes);
 
                 queryResults.push_back(queryResult);
             }

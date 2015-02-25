@@ -24,13 +24,26 @@
 
 using namespace std;
 
+static int SEARCH_TYPE = 0;
+static int LOG_LEVEL = 0;
+
+static const int SEARCH_TYPE_TEXT = 0;
+static const int SEARCH_TYPE_IMAGE = 1;
+
+static const int LOG_LEVEL_ERROR = 0;
+static const int LOG_LEVEL_DEBUG = 1;
+
+static string PATH_PRODUCTS_DESC = "";
+static string FOLDER_CONSULTAS = "";
+static string FOLDER_RELEVANTES = "";
+
 vector<QueryResult*> queryResults;
 map<string, Term*> vector_space;
 vector<Document*> docs;
 
 int readDocuments()
 {
-    docs = ProductParser::parseProducts();
+    docs = ProductParser::parseProducts(PATH_PRODUCTS_DESC);
 
     return docs.size();
 }
@@ -92,11 +105,22 @@ void indexDocuments()
     }
 }
 
+double calcNorma(map<string,double> vectorTFIDF)
+{
+    double temp_norma = 0.00;
+
+    for (map<string,double>::iterator it_tfidf=vectorTFIDF.begin(); it_tfidf!=vectorTFIDF.end(); ++it_tfidf)
+    {
+        temp_norma += pow(it_tfidf->second,2);
+    }
+
+    return sqrt(temp_norma);
+}
+
 //Calculate the TFIDF vector of all documents for each term
 //The documents vector should be sparse
 void processDocuments()
 {
-
     int i = 0;
 
     //Fill the tfidf of each document regard the idf of the term
@@ -105,7 +129,7 @@ void processDocuments()
 
         Term* term = it_term->second;
 
-        double idf = log2((double)docs.size()/term->nt);
+        double idf = log((double)docs.size()/term->nt);
 
         DocNode* currentDocNode = term->docNode;
 
@@ -120,20 +144,13 @@ void processDocuments()
             } else {
                 break;
             }
-
         }
-
         i++;
     }
 
     for(vector<Document*>::iterator it_doc = docs.begin(); it_doc != docs.end(); ++it_doc) 
     {
-        for (map<string,double>::iterator it_tfidf=(*it_doc)->vectorTFIDF.begin(); it_tfidf!=(*it_doc)->vectorTFIDF.end(); ++it_tfidf)
-        {
-            (*it_doc)->norma += pow(it_tfidf->second,2);
-        }
-
-        (*it_doc)->norma = sqrt((*it_doc)->norma);
+        (*it_doc)->norma = calcNorma((*it_doc)->vectorTFIDF);
     }
 }
 
@@ -180,12 +197,12 @@ map<string,double> processQuery(const string query)
     return vectorTFIDF;
 }
 
-DocNode* searchDocs(const string &query)
+DocNode* searchDocs(string &query)
 {
-    string queryNormalized = query;
-    // string queryNormalized = ProductParser::normalizeString(query);
+    if (SEARCH_TYPE == SEARCH_TYPE_TEXT)
+        query = ProductParser::normalizeString(query);
 
-    map<string,double> queryVectorTFIDF = processQuery(queryNormalized);
+    map<string,double> queryVectorTFIDF = processQuery(query);
 
     vector<string> query_vocab;
 
@@ -193,7 +210,7 @@ DocNode* searchDocs(const string &query)
 
     DocNode* docsResult = new DocNode();
 
-    istringstream iss(queryNormalized);
+    istringstream iss(query);
         
     copy( istream_iterator<string>( iss),
           istream_iterator<string>(),
@@ -233,7 +250,7 @@ DocNode* searchDocs(const string &query)
                     }
                 }
 
-                currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma;
+                currentDocNode->doc->tempCosDistance = accum / currentDocNode->doc->norma * calcNorma(queryVectorTFIDF);
 
                 //The code below implements a linked list that contains the result docs ordered by cos distance
                 DocNode* tmpDocNode = new DocNode();
@@ -324,12 +341,16 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
     {   
         if (docsResult->doc && find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
         {
-            cout << "[R] " << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            if (LOG_LEVEL == LOG_LEVEL_DEBUG)
+                cout << "[R] " << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+
             precisions[index_result] = ++amount_relevant;
         }
         else
         {
-            cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+            if (LOG_LEVEL == LOG_LEVEL_DEBUG)
+                cout << docsResult->doc->img << " - " << docsResult->doc->tempCosDistance << " " << index_result << "\n";
+
             precisions[index_result] = 0;   
         }
 
@@ -395,30 +416,60 @@ double calcMAP(int* precisions)
 
 void processQuery() 
 {
-    int query_index;
+    int query_index = 1;
+
+    double accuP10 = 0.000;
+    double accuMAP = 0.000;
 
     for(vector<QueryResult*>::iterator it = queryResults.begin(); it != queryResults.end(); ++it)
     {
         DocNode* docsResult = searchDocs((*it)->query);
 
-        cout << "########## Consulta: " << query_index++ << (*it)->image << endl;
-        
         int* precisions = calcPrecision((*it)->relevantResults,docsResult);
 
-        cout << "P@10 - " << fixed << setprecision(3) << calcP_10(precisions) << endl;
+        double p10 = calcP_10(precisions);
+        double map = calcMAP(precisions);
 
-        cout << "MAP  - " << fixed << setprecision(3) << calcMAP(precisions) << endl;
+        accuP10 += p10;
+        accuMAP += map;
+
+        if(LOG_LEVEL == LOG_LEVEL_DEBUG)
+        {
+            cout << "*************** Consulta " << query_index++ << ": " << (*it)->image << " ***************" <<  endl;
+
+            cout << "P@10 - " << fixed << setprecision(3) << p10 << endl;
+
+            cout << "MAP  - " << fixed << setprecision(3) << map << endl;
+        }
     }
+
+    cout << "P10 Avarage: " << accuP10/50 << endl;
+    cout << "MAP Avarage: " << accuMAP/50 << endl;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
 
-    // queryResults = ProductParser::parseQueryResult();
-    // readDocuments();
+    istringstream argvSearchType(argv[1]);
+    istringstream argvLogLevel(argv[2]);
 
-    queryResults = ProductParser::parseImageQueryResult();
-    readDocumentsImage();
+    argvSearchType >> SEARCH_TYPE;
+    argvLogLevel   >> LOG_LEVEL;
+
+    PATH_PRODUCTS_DESC = argv[3];
+    FOLDER_CONSULTAS   = argv[4];
+    FOLDER_RELEVANTES  = argv[5];
+    
+    if(SEARCH_TYPE == SEARCH_TYPE_TEXT)
+    {
+        queryResults = ProductParser::parseQueryResult(FOLDER_CONSULTAS,FOLDER_RELEVANTES);
+        readDocuments();    
+    }
+    else
+    {
+        queryResults = ProductParser::parseImageQueryResult(FOLDER_CONSULTAS,FOLDER_RELEVANTES);
+        readDocumentsImage();    
+    }
 
     indexDocuments();
     processDocuments();
