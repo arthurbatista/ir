@@ -423,6 +423,10 @@ void processQuery()
 
     for(vector<QueryResult*>::iterator it = queryResults.begin(); it != queryResults.end(); ++it)
     {
+        if(LOG_LEVEL == LOG_LEVEL_DEBUG)
+            cout << "*************** Consulta " << query_index++ << ": " << (*it)->image << " ***************" <<  endl << endl;
+
+
         DocNode* docsResult = searchDocs((*it)->query);
 
         int* precisions = calcPrecision((*it)->relevantResults,docsResult);
@@ -435,16 +439,22 @@ void processQuery()
 
         if(LOG_LEVEL == LOG_LEVEL_DEBUG)
         {
-            cout << "*************** Consulta " << query_index++ << ": " << (*it)->image << " ***************" <<  endl;
+            cout << endl;
 
             cout << "P@10 - " << fixed << setprecision(3) << p10 << endl;
 
             cout << "MAP  - " << fixed << setprecision(3) << map << endl;
+
+            cout << endl << endl;
         }
     }
 
-    cout << "P10 Avarage: " << accuP10/50 << endl;
-    cout << "MAP Avarage: " << accuMAP/50 << endl;
+    cout << "*************** Resultado Final ***************" << endl;
+    cout << "*                                             *" << endl;
+    cout << "*   P10 Avarage: " << fixed << setprecision(3) << accuP10/50 << "                        *" << endl;
+    cout << "*   MAP Avarage: " << fixed << setprecision(3) << accuMAP/50 << "                        *" << endl;
+    cout << "*                                             *" << endl;
+    cout << "***********************************************" << endl;
 }
 
 int main(int argc, char *argv[])

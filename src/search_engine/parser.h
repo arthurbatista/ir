@@ -217,6 +217,7 @@ class ProductParser
                 queryFile.clear();
 
                 QueryResult* queryResult = new QueryResult();
+                queryResult->image = query;
                 queryResult->query = query;
                 queryResult->relevantResults = ProductParser::parseRelevants(query_index,folder_relevantes);
 
