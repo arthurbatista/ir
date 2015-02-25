@@ -330,15 +330,16 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
 {
     int amount_relevant = 0;
     int index_result = 0;
-    int* precisions = new int[10];
+    int* precisions = new int[relevantDocs.size()];
 
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < relevantDocs.size(); ++i)
     {
-       precisions[i] = 0;
+        precisions[i] = 0;
     }
 
     while(true)
     {   
+
         if (docsResult->doc && find(relevantDocs.begin(), relevantDocs.end(), docsResult->doc->img) != relevantDocs.end())
         {
             if (LOG_LEVEL == LOG_LEVEL_DEBUG)
@@ -363,7 +364,7 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
             break;
         }
 
-        if(index_result < 9)
+        if(index_result < relevantDocs.size() - 1)
         {
             index_result++;
         }
@@ -373,11 +374,10 @@ int* calcPrecision(vector<string> relevantDocs, DocNode* docsResult)
         }
     }
 
-    // for (int i = 0; i < 10; ++i)
+    // for (int i = 0; i < relevantDocs.size(); ++i)
     // {
-    //    cout << precisions[i] << ",";
+    //     cout << precisions[i] << ",";
     // }
-
     // cout << endl;
 
     return precisions;
@@ -397,12 +397,12 @@ double calcP_10(int* precisions)
     return totalRelevants / 10.000;
 }
 
-double calcMAP(int* precisions)
+double calcMAP(int* precisions, int totalRelevants)
 {   
 
-    double map = 0.0;
+    double map = 0.000;
 
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < totalRelevants; ++i)
     {
         if(precisions[i]>0)
         {
@@ -410,7 +410,7 @@ double calcMAP(int* precisions)
         }
     }
 
-    return map/10.000;
+    return map/totalRelevants;
 }
 
 
@@ -428,7 +428,7 @@ void processQuery()
         int* precisions = calcPrecision((*it)->relevantResults,docsResult);
 
         double p10 = calcP_10(precisions);
-        double map = calcMAP(precisions);
+        double map = calcMAP(precisions,(*it)->relevantResults.size());
 
         accuP10 += p10;
         accuMAP += map;

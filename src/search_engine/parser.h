@@ -71,20 +71,19 @@ class ProductParser
             for (xml_node<> * product = root_node->first_node("produto"); product; product = product->next_sibling())
             {
                 
-                vector<string> doc_vocab; 
-
+                vector<string> doc_vocab;
+                
                 //Normilize title
+                vector<string> xmlTitle; 
                 string title = product->first_node("titulo")->value();
 
                 istringstream iss_title(title);
 
-                vector<string> xmlTerms; 
-                
                 copy( istream_iterator<string>(iss_title),
                       istream_iterator<string>(),
-                      back_inserter(xmlTerms) );
+                      back_inserter(xmlTitle) );
 
-                for(vector<string>::iterator it = xmlTerms.begin(); it != xmlTerms.end(); ++it) 
+                for(vector<string>::iterator it = xmlTitle.begin(); it != xmlTitle.end(); ++it) 
                 {
                     string item_term = normalizeString(*it);
 
@@ -95,15 +94,16 @@ class ProductParser
                 }
 
                 //Normilize descricao
+                vector<string> xmlDesc; 
                 string desc = product->first_node("descricao")->value();
 
                 istringstream iss_desc(desc);
 
                 copy( istream_iterator<string>(iss_desc),
                       istream_iterator<string>(),
-                      back_inserter(xmlTerms) );
+                      back_inserter(xmlDesc) );
 
-                for(vector<string>::iterator it = xmlTerms.begin(); it != xmlTerms.end(); ++it) 
+                for(vector<string>::iterator it = xmlDesc.begin(); it != xmlDesc.end(); ++it) 
                 {
                     string desc_term = normalizeString(*it);
                     if (stop_words.find(desc_term) == stop_words.end())
@@ -127,7 +127,7 @@ class ProductParser
         {
             vector<Document*> docs;
 
-            for (int i = 1; i <= 4; ++i)
+            for (int i = 1; i <= 7; ++i)
             {
                 ostringstream chunk_file;
                 chunk_file << "sdlf/chunk_" << i << ".txt";
