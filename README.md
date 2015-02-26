@@ -18,12 +18,12 @@ Requesitos:
 
 ======== Pesquisa Textutal ========
 
-Executar o arquivo <pesquisaTextual.sh>. Caso deseja ver o log no modo debug, basta passar -V como argumento:
+Executar o arquivo "pesquisaTextual.sh". Caso deseja ver o log no modo debug, basta passar -V como argumento:
   ./pesquisaTextual.sh -V
   
 ======== Pesquisa Imagem ==========  
 
-Executar o arquivo <pesquisaImagem.sh>. Caso deseja ver o log no modo debug, basta passar -V como argumento:
+Executar o arquivo "pesquisaImagem.sh". Caso deseja ver o log no modo debug, basta passar -V como argumento:
   ./pesquisaImagem.sh -V
   
 ** A pesquisa por imagem necessita de, no mínmo, 25gb de espaço livre.
