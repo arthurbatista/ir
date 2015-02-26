@@ -1,184 +1,133 @@
-from PIL import Image,ImageDraw
-
-import xml.etree.ElementTree as ET
+import sys
+import math
 import operator
+import xml.etree.ElementTree as ET
+
+from PIL import Image
+
+PATH_PRODUCTS_DESC = sys.argv[1]
+FOLDER_COLECAO_IMG = sys.argv[2]
+FOLDER_CONSULTA    = sys.argv[3]
 
 border_size = 0.11
+
+NUMBER_OF_BLOCKS = 1296
+
 BLOCK_SIZE = 36
+    
+def get_region(width, height, x, y):
+    imgWBorder = width * border_size
+    imgHBorder = height * border_size
 
-width  = 355
-height = 355
+    if (x <= (width/2) and y <= imgHBorder) or (x <= imgWBorder and y <= height/2):
+        return "A"
+    if (x > (width/2) and y <= imgHBorder) or (x > (width - imgWBorder) and y <= height/2):
+        return "B"
+    if (x <= (width/2) and y > (height - imgHBorder)) or (x <= imgWBorder and y > height/2):
+        return "D"
+    if (x > (width/2) and y > (height - imgHBorder)) or (x > (width - imgWBorder) and y > height/2):
+        return "E"
+    return "C"
 
-half_width = width/float(2)
-half_height = height/float(2)
+def extract_image_words(imagePath):
 
-BORDER_N = height * border_size
-BORDER_W = width * border_size
-BORDER_S = height - height * border_size
-BORDER_E = width - width * border_size
+    im = Image.open(imagePath)
 
-xBlocks_size = width/float(BLOCK_SIZE);
-yBlocks_size = height/float(BLOCK_SIZE);
+    #quantize 256
+    img256 = im.convert('P')
 
-im_new = Image.new('RGB', (355,355), (255,0,0))
-dr = ImageDraw.Draw(im_new)
+    imgWidth = im.size[0]
+    imgHeight = im.size[1]
 
-def draw_region(x,y):
+    blockSize = math.sqrt((imgWidth * imgHeight) / NUMBER_OF_BLOCKS)
 
-    if x >= BORDER_W and x <= BORDER_E and y >= BORDER_N and y <= BORDER_S:
-        dr.rectangle(((x,y),(x+xBlocks_size,y+yBlocks_size)), fill="black", outline = "blue")
-    elif x <= half_width and y < half_height:
-        dr.rectangle(((x,y),(x+xBlocks_size,y+yBlocks_size)), fill="red", outline = "blue")
-    elif x <= half_width and y >= half_height:
-        dr.rectangle(((x,y),(x+xBlocks_size,y+yBlocks_size)), fill="blue", outline = "blue")
-    elif x > half_width and y <= half_height:
-        dr.rectangle(((x,y),(x+xBlocks_size,y+yBlocks_size)), fill="yellow", outline = "blue")
-    else:
-        dr.rectangle(((x,y),(x+xBlocks_size,y+yBlocks_size)), fill="pink", outline = "blue")
+    yleft = 0
+    yright = blockSize
 
-def get_region(x,y):
+    img_vocab = ''
 
-    if x >= BORDER_W and x <= BORDER_E and y >= BORDER_N and y <= BORDER_S:
-        return 'E'
-    elif x <= half_width and y < half_height:
-        return 'A'
-    elif x <= half_width and y >= half_height:
-        return 'D'
-    elif x > half_width and y <= half_height:
-        return 'B'
-    else:
-        return 'C'
+    for i in range(0, 36):
+        xleft = 0
+        xright = blockSize
 
-def convert_histogram(histogram):
+        for j in range(0, 36):
+            block = img256.transform((36, 36), Image.EXTENT, (xleft, yleft, xright, yright))
+            block_histogram = block.histogram()
 
-    sortedHistogram = {}
+            histogram = {}
 
-    for k, v in enumerate(histogram):
-        sortedHistogram[k] = v
+            for key, value in enumerate(block_histogram):
+                histogram[key] = value
 
-    sortedHistogram = sorted(sortedHistogram.items(),key=operator.itemgetter(1),reverse=True)
+            sorted_histogram = sorted(histogram.items(), key = operator.itemgetter(1), reverse=True)
 
-    relevant_colors_len = int(len(sortedHistogram) * 0.95)
+            five_percent = int(len(sorted_histogram) * 0.95)
 
-    block_word = ''
+            blockWord = get_region(imgWidth, imgHeight, xright, yright)
 
-    j = 0
-    for k,v in sortedHistogram:
-        if j == relevant_colors_len:
-            break
+            if blockWord == 'C':
+                _bin = 0
 
-        block_word = block_word + 'x' + str(k)
-        j = j + 1
+                for value in sorted_histogram:
 
-    return block_word
+                    #discard five percent of less frequent colors
+                    if _bin == five_percent:
+                        break
 
-def extract_image_words(p_img):
+                    blockWord = blockWord + 'x' + str(value[0])
 
-    words = ''
+                    _bin = _bin + 1
 
-    #Reduce the image to 256 colors
-    im = Image.open(p_img)
-    img_reduced = im.convert('P', palette=Image.ADAPTIVE, colors=255)
+                img_vocab = img_vocab + blockWord + ' '
 
-    xPoint = 0
-    yPoint = 0
+            xleft = xleft + blockSize
+            xright = xright + blockSize
 
-    for y in range(0,BLOCK_SIZE):
-        for x in range(0,BLOCK_SIZE):
+        yleft = yleft + blockSize
+        yright = yright + blockSize
 
-            img_block = img_reduced.transform((BLOCK_SIZE,BLOCK_SIZE), Image.EXTENT, (xPoint,yPoint,xPoint+xBlocks_size,yPoint+yBlocks_size))
-            histogram = img_block.histogram()
-
-            words = words + get_region(xPoint,yPoint) + convert_histogram(histogram) + '\n'
-            # draw_region(xPoint,yPoint)
-            xPoint = xPoint + xBlocks_size
-
-        xPoint = 0
-        yPoint = yPoint + yBlocks_size
-
-    im_new.save("rectangle.png")
-
-    return words
-
-print extract_image_words('consultasDafiti/1.jpg')
-
-# tree = ET.parse('textDescDafitiPosthaus.xml')
-# root = tree.getroot()
-
-# chunk_index = 1
-# chunk_size = 5000
-
-# chunk_file = None
-# tmp_str = ''
-
-# for relevante in root.findall('relevante'):
-
-#     try:
-#         img_name  = relevante.find('img').text
-#         img_words = extract_image_words('colecaoDafitiPosthaus/'+img_name)
-
-#         tmp_str = tmp_str + img_name+" "+img_words+"\n"
-
-#         if chunk_index%chunk_size == 0:
-#             chunk_file = open("test_chunk.txt", "w")
-#             chunk_file.write(tmp_str)
-#             chunk_file.close()
-#             tmp_str = ''
-            
-#     except Exception:
-#         continue;
-
-#     chunk_index = chunk_index + 1
-
-# if tmp_str != '':
-#     chunk_file = open("test_chunk.txt", "w")
-#     chunk_file.write(tmp_str)
-#     chunk_file.close()
-
-# tmp_str = ''
-# for i in range(1,2):
-#     img_file_name = str(i)+'.jpg'
-#     query_img_words = extract_image_words('consultasDafiti/'+img_file_name)
-#     tmp_str = tmp_str + img_file_name+" "+query_img_words+"\n"
-
-# img_query_file = open("test_query.txt","w")
-# img_query_file.write(tmp_str)
-# img_query_file.close()
+    return img_vocab
 
 
-#####################
+tree = ET.parse(PATH_PRODUCTS_DESC)
+root = tree.getroot()
 
-# for produto in root.findall('produto'):
+chunk_index = 1
+chunk_filename_index = 1
+chunk_size = 3000
 
-#     try:
-#         img_name  = produto.find('img').text
-#         img_words = extract_image_words('colecaoDafitiPosthaus/'+img_name)
+chunk_file = None
+tmp_str = ''
 
-#         tmp_str = tmp_str + img_name+" "+img_words+"\n"
+for produto in root.findall('produto'):
 
-#         if chunk_index%chunk_size == 0:
-#             chunk_file = open("chunk_"+str(chunk_index)+".txt", "w")
-#             chunk_file.write(tmp_str)
-#             chunk_file.close()
-#             tmp_str = ''
-            
-#     except Exception:
-#         continue;
+    try:
+        img_name  = produto.find('img').text
+        img_words = extract_image_words(FOLDER_COLECAO_IMG+img_name)
+        tmp_str = tmp_str + img_name+" "+img_words+"\n"
 
-#     chunk_index = chunk_index + 1
+        if chunk_index%chunk_size == 0:
+            chunk_file = open("sdlf/chunk_"+str(chunk_filename_index)+".txt", "w")
+            chunk_file.write(tmp_str)
+            chunk_file.close()
+            tmp_str = ''
+            chunk_filename_index = chunk_filename_index + 1
+    except Exception:
+        continue;
 
-# if tmp_str != '':
-#     chunk_file = open("chunk_"+str(chunk_index)+".txt", "w")
-#     chunk_file.write(tmp_str)
-#     chunk_file.close()
+    chunk_index = chunk_index + 1
 
-# tmp_str = ''
-# for i in range(1,51):
-#     img_file_name = str(i)+'.jpg'
-#     query_img_words = extract_image_words('consultasDafiti/'+img_file_name)
-#     tmp_str = tmp_str + img_file_name+" "+query_img_words+"\n"
+if tmp_str != '':
+    chunk_file = open("sdlf/chunk_"+str(chunk_filename_index)+".txt", "w")
+    chunk_file.write(tmp_str)
+    chunk_file.close()
 
-# img_query_file = open("img_query.txt","w")
-# img_query_file.write(tmp_str)
-# img_query_file.close()
+tmp_str = ''
+for i in range(1,51):
+    img_file_name = str(i)+'.jpg'
+    query_img_words = extract_image_words(FOLDER_CONSULTA+img_file_name)
+    tmp_str = tmp_str + query_img_words + "\n"
 
+img_query_file = open("sdlf/queries.txt","w")
+img_query_file.write(tmp_str)
+img_query_file.close()

@@ -127,7 +127,7 @@ class ProductParser
         {
             vector<Document*> docs;
 
-            for (int i = 1; i <= 7; ++i)
+            for (int i = 1; i <= 6; ++i)
             {
                 ostringstream chunk_file;
                 chunk_file << "sdlf/chunk_" << i << ".txt";
